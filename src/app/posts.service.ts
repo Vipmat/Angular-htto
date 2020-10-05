@@ -1,7 +1,12 @@
-import { HttpClient } from '@angular/common/http';
+import {
+  HttpClient,
+  HttpEventType,
+  HttpHeaders,
+  HttpParams,
+} from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Subject, throwError } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { map, catchError, tap } from 'rxjs/operators';
 import { Post } from './post.model';
 
 @Injectable({
@@ -17,11 +22,14 @@ export class PostsService {
     this.http
       .post<{ name: string }>(
         'https://angular-project-a9929.firebaseio.com/posts.json',
-        postData
+        postData,
+        {
+          observe: 'response',
+        }
       )
       .subscribe(
         (responseData) => {
-          console.log(responseData);
+          console.log(responseData.body);
         },
         (error) => {
           this.error.next(error.message);
@@ -30,9 +38,18 @@ export class PostsService {
   }
 
   fetchPosts() {
+    let searchParams = new HttpParams();
+    searchParams = searchParams.append('print', 'pretty');
+    searchParams = searchParams.append('custom', 'key');
+
     return this.http
       .get<{ [key: string]: Post }>(
-        'https://angular-project-a9929.firebaseio.com/posts.json'
+        'https://angular-project-a9929.firebaseio.com/posts.json',
+        {
+          headers: new HttpHeaders({ 'Custom-Header': 'Hello' }),
+          params: searchParams,
+          responseType: 'json',
+        }
       )
       .pipe(
         map((responseData) => {
@@ -51,8 +68,17 @@ export class PostsService {
   }
 
   deletePosts() {
-    return this.http.delete(
-      'https://angular-project-a9929.firebaseio.com/posts.json'
-    );
+    return this.http
+      .delete('https://angular-project-a9929.firebaseio.com/posts.json', {
+        observe: 'events',
+      })
+      .pipe(
+        tap((event) => {
+          console.log(event);
+          if (event.type === HttpEventType.Response) {
+            console.log(event.body);
+          }
+        })
+      );
   }
 }
